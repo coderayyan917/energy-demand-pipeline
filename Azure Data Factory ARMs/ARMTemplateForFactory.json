@@ -1,1 +1,402 @@
-
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "energyfactoryproject"
+        },
+        "AzureDataLakeStorage1_accountKey": {
+            "type": "secureString",
+            "metadata": "Secure string for 'accountKey' of 'AzureDataLakeStorage1'"
+        },
+        "Api-Ingestion-Trigger_properties_Energy_Ingestion_brz_parameters_window_start": {
+            "type": "string",
+            "defaultValue": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'yyyy-MM-ddTHH')"
+        },
+        "Api-Ingestion-Trigger_properties_Energy_Ingestion_brz_parameters_window_end": {
+            "type": "string",
+            "defaultValue": "@formatDateTime(trigger().scheduledTime, 'yyyy-MM-ddTHH')"
+        },
+        "Api-Ingestion-Trigger_properties_Energy_Ingestion_brz_parameters_ingest_date": {
+            "type": "string",
+            "defaultValue": "@formatDateTime(trigger().scheduledTime,'yyyy-MM-dd')"
+        },
+        "AzureDataLakeStorage1_properties_typeProperties_url": {
+            "type": "string",
+            "defaultValue": "https://energyprojectdl.dfs.core.windows.net/"
+        },
+        "myAPI_Linked_Service_properties_typeProperties_url": {
+            "type": "string",
+            "defaultValue": "https://api.eia.gov/v2/electricity/rto/region-data/data/"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/Energy_Ingestion_brz')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Copy data1",
+                        "type": "Copy",
+                        "dependsOn": [
+                            {
+                                "activity": "Set variable1",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "source": {
+                                "type": "RestSource",
+                                "httpRequestTimeout": "00:01:40",
+                                "requestInterval": "00.00:00:00.010",
+                                "requestMethod": "GET",
+                                "paginationRules": {
+                                    "supportRFC5988": "true"
+                                }
+                            },
+                            "sink": {
+                                "type": "DelimitedTextSink",
+                                "storeSettings": {
+                                    "type": "AzureBlobFSWriteSettings"
+                                },
+                                "formatSettings": {
+                                    "type": "DelimitedTextWriteSettings",
+                                    "quoteAllText": true,
+                                    "fileExtension": ".txt"
+                                }
+                            },
+                            "enableStaging": false,
+                            "translator": {
+                                "type": "TabularTranslator",
+                                "mappings": [
+                                    {
+                                        "source": {
+                                            "path": "[['period']"
+                                        },
+                                        "sink": {
+                                            "name": "period",
+                                            "type": "String"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "path": "[['respondent']"
+                                        },
+                                        "sink": {
+                                            "name": "respondent",
+                                            "type": "String"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "path": "[['respondent-name']"
+                                        },
+                                        "sink": {
+                                            "name": "respondent-name",
+                                            "type": "String"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "path": "[['type']"
+                                        },
+                                        "sink": {
+                                            "name": "type",
+                                            "type": "String"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "path": "[['type-name']"
+                                        },
+                                        "sink": {
+                                            "name": "type-name",
+                                            "type": "String"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "path": "[['value']"
+                                        },
+                                        "sink": {
+                                            "name": "value",
+                                            "type": "Double"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "path": "[['value-units']"
+                                        },
+                                        "sink": {
+                                            "name": "value-units",
+                                            "type": "String"
+                                        }
+                                    }
+                                ],
+                                "collectionReference": "$['response']['data']"
+                            }
+                        },
+                        "inputs": [
+                            {
+                                "referenceName": "myAPI_EnergyProject",
+                                "type": "DatasetReference",
+                                "parameters": {
+                                    "start_date": {
+                                        "value": "@pipeline().parameters.window_start",
+                                        "type": "Expression"
+                                    },
+                                    "end_date": {
+                                        "value": "@pipeline().parameters.window_end",
+                                        "type": "Expression"
+                                    },
+                                    "api_key": {
+                                        "value": "@variables('api_key')",
+                                        "type": "Expression"
+                                    }
+                                }
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "referenceName": "myAPI_Data_FIle",
+                                "type": "DatasetReference",
+                                "parameters": {
+                                    "ingest_date": "@pipeline().parameters.ingest_date"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "Web1",
+                        "type": "WebActivity",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "method": "GET",
+                            "headers": {},
+                            "url": {
+                                "value": "https://energy-api-vaults.vault.azure.net/secrets/eia-api-key?api-version=7.4",
+                                "type": "Expression"
+                            },
+                            "authentication": {
+                                "type": "MSI",
+                                "resource": "https://vault.azure.net"
+                            }
+                        }
+                    },
+                    {
+                        "name": "Set variable1",
+                        "type": "SetVariable",
+                        "dependsOn": [
+                            {
+                                "activity": "Web1",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "variableName": "api_key",
+                            "value": {
+                                "value": "@activity('Web1').output.value",
+                                "type": "Expression"
+                            }
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "parameters": {
+                    "window_start": {
+                        "type": "string"
+                    },
+                    "window_end": {
+                        "type": "string"
+                    },
+                    "ingest_date": {
+                        "type": "string"
+                    }
+                },
+                "variables": {
+                    "api_key": {
+                        "type": "String"
+                    }
+                },
+                "annotations": [],
+                "lastPublishTime": "2026-09-24T20:02:39Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/myAPI_EnergyProject')]",
+                "[concat(variables('factoryId'), '/datasets/myAPI_Data_FIle')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/Api-Ingestion-Trigger')]",
+            "type": "Microsoft.DataFactory/factories/triggers",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "runtimeState": "Started",
+                "pipelines": [
+                    {
+                        "pipelineReference": {
+                            "referenceName": "Energy_Ingestion_brz",
+                            "type": "PipelineReference"
+                        },
+                        "parameters": {
+                            "window_start": "[parameters('Api-Ingestion-Trigger_properties_Energy_Ingestion_brz_parameters_window_start')]",
+                            "window_end": "[parameters('Api-Ingestion-Trigger_properties_Energy_Ingestion_brz_parameters_window_end')]",
+                            "ingest_date": "[parameters('Api-Ingestion-Trigger_properties_Energy_Ingestion_brz_parameters_ingest_date')]"
+                        }
+                    }
+                ],
+                "type": "ScheduleTrigger",
+                "typeProperties": {
+                    "recurrence": {
+                        "frequency": "Day",
+                        "interval": 1,
+                        "startTime": "2026-09-22T03:40:00",
+                        "timeZone": "India Standard Time",
+                        "schedule": {}
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/pipelines/Energy_Ingestion_brz')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/myAPI_Data_FIle')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "AzureDataLakeStorage1",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "ingest_date": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileName": {
+                            "value": "electricity_daily/ingest_date=@{dataset().ingest_date}/data.csv",
+                            "type": "Expression"
+                        },
+                        "folderPath": "API ingestion",
+                        "fileSystem": "bronze"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/AzureDataLakeStorage1')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/myAPI_EnergyProject')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "myAPI_Linked_Service",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "start_date": {
+                        "type": "string"
+                    },
+                    "end_date": {
+                        "type": "string"
+                    },
+                    "api_key": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "type": "RestResource",
+                "typeProperties": {
+                    "relativeUrl": {
+                        "value": "?api_key=@{dataset().api_key}&frequency=hourly&data[0]=value&facets[respondent][0]=CAL&facets[respondent][1]=TEX&facets[respondent][2]=NYIS&facets[respondent][3]=PJM&facets[type][0]=D&start=@{dataset().start_date}&end=@{dataset().end_date}&sort[0][column]=period&sort[0][direction]=desc&offset=0&length=5000",
+                        "type": "Expression"
+                    }
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/myAPI_Linked_Service')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/AzureDataLakeStorage1')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobFS",
+                "typeProperties": {
+                    "url": "[parameters('AzureDataLakeStorage1_properties_typeProperties_url')]",
+                    "accountKey": {
+                        "type": "SecureString",
+                        "value": "[parameters('AzureDataLakeStorage1_accountKey')]"
+                    }
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/myAPI_Linked_Service')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "RestService",
+                "typeProperties": {
+                    "url": "[parameters('myAPI_Linked_Service_properties_typeProperties_url')]",
+                    "enableServerCertificateValidation": true,
+                    "authenticationType": "Anonymous"
+                }
+            },
+            "dependsOn": []
+        }
+    ]
+}
