@@ -1,1 +1,27 @@
-
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "value": "energyfactoryproject"
+        },
+        "AzureDataLakeStorage1_accountKey": {
+            "value": ""
+        },
+        "Api-Ingestion-Trigger_properties_Energy_Ingestion_brz_parameters_window_start": {
+            "value": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'yyyy-MM-ddTHH')"
+        },
+        "Api-Ingestion-Trigger_properties_Energy_Ingestion_brz_parameters_window_end": {
+            "value": "@formatDateTime(trigger().scheduledTime, 'yyyy-MM-ddTHH')"
+        },
+        "Api-Ingestion-Trigger_properties_Energy_Ingestion_brz_parameters_ingest_date": {
+            "value": "@formatDateTime(trigger().scheduledTime,'yyyy-MM-dd')"
+        },
+        "AzureDataLakeStorage1_properties_typeProperties_url": {
+            "value": "https://energyprojectdl.dfs.core.windows.net/"
+        },
+        "myAPI_Linked_Service_properties_typeProperties_url": {
+            "value": "https://api.eia.gov/v2/electricity/rto/region-data/data/"
+        }
+    }
+}
