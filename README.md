@@ -86,22 +86,6 @@ Two transformation approaches were also built:
   Gold-layer analysis (e.g., demand vs. generation balance per region) — noted
   as a natural next iteration rather than built, to keep v1 scope focused.
 
-## Repo structure
-
-```
-ingestion/
-  fetch_eia_data.py              Standalone Python ingestion script (local/general use)
-  databricks_fetch_eia_data.py   Databricks-notebook version with checkpoint-based
-                                  incremental loading and Key Vault-backed secrets
-adf/
-  pipeline_notes.md              ADF pipeline design (not exportable as clean code)
-transformations/
-  bronze_to_silver_final.py      Hand-written batch Silver/Gold notebook
-  lakeflow_pipeline.py           Lakeflow Declarative Pipelines version
-screenshots/
-  pipeline_graph.png             Working end-to-end DLT pipeline, all nodes green
-  gold_daily_demand_summary.png  Sample Gold-layer output
-```
 
 ## Sample output
 
