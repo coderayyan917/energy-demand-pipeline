@@ -46,23 +46,23 @@ approaches:
    Schedule Trigger with dynamic date-window parameters.
 
 Two transformation approaches were also built:
-1. **Hand-written PySpark batch notebook** — explicit read/transform/write,
+1. **Hand-written PySpark batch notebook** - explicit read/transform/write,
    full control over every step.
-2. **Lakeflow Declarative Pipelines (formerly Delta Live Tables)** — declarative
+2. **Lakeflow Declarative Pipelines (formerly Delta Live Tables)** - declarative
    table definitions, automatic dependency resolution, built-in data quality
    enforcement via `@dlt.expect_or_drop`.
 
 ## Key engineering decisions
 
 - **Storage authentication:** Access Connector for Azure Databricks (managed
-  identity) rather than storage account keys — no long-lived secrets in code
+  identity) rather than storage account keys - no long-lived secrets in code
   or config.
 - **Secret management:** EIA API key stored in Azure Key Vault, accessed via a
-  Key Vault-backed Databricks secret scope — never hardcoded.
+  Key Vault-backed Databricks secret scope - never hardcoded.
 - **Timezone handling:** confirmed via EIA's own documentation that
   `frequency=hourly` returns UTC timestamps (not per-region local time),
   which avoids daylight-saving-time ambiguity when comparing regions.
-- **Deduplication key:** `(period, respondent, type)` — the natural key for
+- **Deduplication key:** `(period, respondent, type)` - the natural key for
   "one region's one measurement type at one hour," guarding against
   double-ingestion from overlapping manual test runs and the scheduled
   pipeline.
